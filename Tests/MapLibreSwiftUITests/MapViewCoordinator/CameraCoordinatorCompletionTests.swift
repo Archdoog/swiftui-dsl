@@ -4,7 +4,7 @@ import Testing
 @testable import MapLibreSwiftUI
 
 @MainActor
-struct CameraCoordinatorIdentityTests {
+struct CameraCoordinatorCompletionTests {
     let runner = MockCameraUpdateGating(policy: .relaxedVoid)
     let map = MockMLNMapViewRepresentable(policy: .relaxedVoid)
     private let callbacks = CameraCallbacks()
@@ -19,16 +19,6 @@ struct CameraCoordinatorIdentityTests {
             .willProduce { [weak callbacks] _, _, completion in callbacks?.completion = completion }
     }
 
-    @Test("A replacement camera request prevents the old tracking completion from writing its zoom")
-    func rejectReplacedCompletion() throws {
-        let completeTracking = try arrangeTrackingCompletion()
-
-        coordinator.applyCameraChangeFromStateUpdate(map, camera: .trackUserLocation(zoom: 15))
-        completeTracking()
-
-        verify(map).zoomLevel(newValue: .value(14)).setCalled(0)
-    }
-
     @Test("An idle event preserves the current tracking completion and its requested zoom")
     func preserveIdleCompletion() throws {
         let completeTracking = try arrangeTrackingCompletion()
@@ -37,27 +27,6 @@ struct CameraCoordinatorIdentityTests {
         completeTracking()
 
         verify(map).zoomLevel(newValue: .value(14)).setCalled(1)
-    }
-
-    @Test("Explicit cancellation prevents the current tracking completion from writing its zoom")
-    func rejectCanceledCompletion() throws {
-        let completeTracking = try arrangeTrackingCompletion()
-
-        coordinator.cancelCameraUpdate()
-        completeTracking()
-
-        verify(map).zoomLevel(newValue: .value(14)).setCalled(0)
-    }
-
-    @Test("An accepted gesture prevents the previous tracking completion from writing its zoom")
-    func rejectCompletionAfterGesture() throws {
-        let completeTracking = try arrangeTrackingCompletion()
-        given(runner).isRunning.willReturn(false)
-
-        coordinator.applyCameraChangeFromGesture(map, reason: .gesturePan)
-        completeTracking()
-
-        verify(map).zoomLevel(newValue: .value(14)).setCalled(0)
     }
 
     @Test("An ignored gesture preserves the current tracking completion and its requested zoom")

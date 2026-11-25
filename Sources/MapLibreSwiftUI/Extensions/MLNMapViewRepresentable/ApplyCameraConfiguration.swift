@@ -2,11 +2,7 @@ import MapLibre
 
 @MainActor
 extension MLNMapViewRepresentable {
-    func apply(
-        camera: MapViewCamera,
-        animated: Bool,
-        isCurrent: @escaping @MainActor () -> Bool = { true }
-    ) {
+    func apply(camera: MapViewCamera, animated: Bool) {
         switch camera.state {
         case let .centered(
             onCoordinate: coordinate,
@@ -56,7 +52,7 @@ extension MLNMapViewRepresentable {
                 maximumPitch = pitchRange.rangeValue.upperBound
             } else {
                 setUserTrackingMode(.follow, animated: animated) {
-                    guard isCurrent(), self.userTrackingMode == .follow else {
+                    guard self.userTrackingMode == .follow else {
                         return
                     }
 
@@ -81,7 +77,7 @@ extension MLNMapViewRepresentable {
                 maximumPitch = pitchRange.rangeValue.upperBound
             } else {
                 setUserTrackingMode(.followWithHeading, animated: animated) {
-                    guard isCurrent(), self.userTrackingMode == .followWithHeading else {
+                    guard self.userTrackingMode == .followWithHeading else {
                         return
                     }
 
@@ -105,7 +101,7 @@ extension MLNMapViewRepresentable {
                 maximumPitch = pitchRange.rangeValue.upperBound
             } else {
                 setUserTrackingMode(.followWithCourse, animated: animated) {
-                    guard isCurrent(), self.userTrackingMode == .followWithCourse else {
+                    guard self.userTrackingMode == .followWithCourse else {
                         return
                     }
 

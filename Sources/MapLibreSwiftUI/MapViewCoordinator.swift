@@ -40,7 +40,6 @@ MLNMapViewDelegate {
     private var snapshotStyleSource: MapStyleSource?
 
     private let cameraUpdates: any CameraUpdateGating
-    private var cameraRequestID: UUID?
 
     var onStyleLoaded: ((MLNStyle) -> Void)?
     var onUserTrackingModeChange: ((MLNUserTrackingMode, Bool) -> Void)?
@@ -232,16 +231,12 @@ MLNMapViewDelegate {
 
         snapshotCamera = camera
 
-        let requestID = UUID()
-        cameraRequestID = requestID
         cameraUpdates.run { [weak self, weak cameraUpdates = cameraUpdates] in
             guard self != nil else {
                 cameraUpdates?.finish()
                 return
             }
-            mapView.apply(camera: camera, animated: animated) { [weak self] in
-                self?.cameraRequestID == requestID
-            }
+            mapView.apply(camera: camera, animated: animated)
         }
     }
 
@@ -268,7 +263,6 @@ MLNMapViewDelegate {
     ///   - reason: The reason for the camera change.
     @MainActor func applyCameraChangeFromGesture(_ mapView: MLNMapViewRepresentable, reason: CameraChangeReason) {
         guard !cameraUpdates.isRunning else { return }
-        cameraRequestID = nil
         cameraUpdates.run { [weak self, weak cameraUpdates = cameraUpdates] in
             guard let self else {
                 cameraUpdates?.finish()
@@ -294,7 +288,6 @@ MLNMapViewDelegate {
 
     /// Cancels the pending camera update.
     @MainActor func cancelCameraUpdate() {
-        cameraRequestID = nil
         cameraUpdates.cancel()
     }
 
