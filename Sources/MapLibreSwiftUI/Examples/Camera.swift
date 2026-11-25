@@ -3,47 +3,85 @@ import MapLibre
 import MapLibreSwiftDSL
 import SwiftUI
 
+@available(iOS 16.4, *)
 struct CameraDirectManipulationPreview: View {
-    @State private var camera = MapViewCamera.center(switzerland, zoom: 4)
+    @State private var camera = MapViewCamera.center(Self.france, zoom: 4)
+    @State private var locationManager = StaticLocationManager(initialLocation: CLLocation(
+        coordinate: Self.france,
+        altitude: 0,
+        horizontalAccuracy: 1,
+        verticalAccuracy: 1,
+        course: 45,
+        speed: 10,
+        timestamp: Date()
+    ))
 
     let styleURL: URL
     var onStyleLoaded: (() -> Void)?
-    var targetCameraAfterDelay: MapViewCamera?
 
     var body: some View {
-        MapView(styleURL: styleURL, camera: $camera)
+        MapView(styleURL: styleURL, camera: $camera, locationManager: locationManager)
             .onMapStyleLoaded { _ in
                 print("Style Loaded")
                 onStyleLoaded?()
             }
-            .overlay(alignment: .bottom, content: {
-                Text("\(String(describing: camera.state))")
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(
-                        Rectangle()
-                            .foregroundColor(.black)
-                            .cornerRadius(8)
-                    )
-                    .padding(.horizontal)
-                    .padding(.bottom, 42)
-            })
-            .task {
-                if let targetCameraAfterDelay {
-                    try? await Task.sleep(nanoseconds: 3 * NSEC_PER_SEC)
-
-                    camera = targetCameraAfterDelay
-                }
+            .sheet(isPresented: .constant(true)) {
+                cameraControls
+                    .presentationDetents([.height(250)])
+                    .presentationDragIndicator(.hidden)
+                    .presentationBackgroundInteraction(.enabled)
+                    .interactiveDismissDisabled()
             }
+    }
+
+    private var cameraControls: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
+                cameraButton("France", camera: .center(Self.france, zoom: 4))
+                cameraButton("Closer", camera: .center(Self.france, zoom: 5))
+                cameraButton("Tilt", camera: .center(Self.france, zoom: 5, pitch: 60, direction: 45))
+                cameraButton("Follow", camera: .trackUserLocation(zoom: 5))
+                cameraButton("Heading", camera: .trackUserLocationWithHeading(zoom: 5))
+                cameraButton("Course", camera: .trackUserLocationWithCourse(zoom: 5))
+                cameraButton("Fit bounds", camera: .boundingBox(MLNCoordinateBounds(
+                    sw: CLLocationCoordinate2D(latitude: 41, longitude: -5),
+                    ne: CLLocationCoordinate2D(latitude: 51.2, longitude: 9.7)
+                )))
+                cameraButton("Showcase", camera: .showcase(shapeCollection: MLNShapeCollection(shapes: [
+                    MLNPolylineFeature(coordinates: [
+                        CLLocationCoordinate2D(latitude: 48.4, longitude: -4.5),
+                        CLLocationCoordinate2D(latitude: 48.6, longitude: 7.8),
+                        CLLocationCoordinate2D(latitude: 43.3, longitude: 5.4),
+                    ]),
+                ])))
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+
+            Text(String(describing: camera.state))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+        }
+        .padding()
+    }
+
+    private static let france = CLLocationCoordinate2D(latitude: 46.6, longitude: 2.2)
+
+    private func cameraButton(_ title: String, camera target: MapViewCamera) -> some View {
+        Button {
+            camera = target
+        } label: {
+            Text(title)
+                .frame(maxWidth: .infinity, minHeight: 30)
+        }
     }
 }
 
-#Preview("Camera Zoom after delay") {
-    CameraDirectManipulationPreview(
-        styleURL: demoTilesURL,
-        targetCameraAfterDelay: .center(switzerland, zoom: 6)
-    )
-    .ignoresSafeArea(.all)
+@available(iOS 16.4, *)
+#Preview("Camera controls") {
+    CameraDirectManipulationPreview(styleURL: demoTilesURL)
+        .ignoresSafeArea(.all)
 }
 
 struct CameraShowcasePolylinePreview: View {

@@ -3,6 +3,7 @@ import XCTest
 @testable import MapLibreSwiftUI
 
 final class CameraPreviewTests: XCTestCase {
+    @available(iOS 16.4, *)
     func testCameraPreview() async {
         await assertView {
             CameraDirectManipulationPreview(
