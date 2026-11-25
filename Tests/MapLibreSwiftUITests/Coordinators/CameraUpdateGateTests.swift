@@ -2,8 +2,8 @@ import Testing
 @testable import MapLibreSwiftUI
 
 @MainActor
-struct CameraUpdateRunnerTests {
-    let runner = CameraUpdateRunner()
+struct CameraUpdateGateTests {
+    let runner = CameraUpdateGate()
 
     @Test("Starting a camera update marks work pending before the task executes")
     func markPending() {
@@ -201,7 +201,7 @@ private func waitForCameraEvent(_ event: () -> Bool) async throws {
 }
 
 @MainActor
-private func waitForCameraCompletion(_ task: Task<Void, Never>, runner: CameraUpdateRunner) async throws {
+private func waitForCameraCompletion(_ task: Task<Void, Never>, runner: CameraUpdateGate) async throws {
     var completed = false
     let observation = Task {
         await task.value

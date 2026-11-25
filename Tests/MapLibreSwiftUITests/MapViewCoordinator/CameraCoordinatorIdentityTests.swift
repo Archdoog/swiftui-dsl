@@ -5,7 +5,7 @@ import Testing
 
 @MainActor
 struct CameraCoordinatorIdentityTests {
-    let runner = MockCameraUpdateRunning(policy: .relaxedVoid)
+    let runner = MockCameraUpdateGating(policy: .relaxedVoid)
     let map = MockMLNMapViewRepresentable(policy: .relaxedVoid)
     private let callbacks = CameraCallbacks()
     let coordinator: MapViewCoordinator<MLNMapViewController>

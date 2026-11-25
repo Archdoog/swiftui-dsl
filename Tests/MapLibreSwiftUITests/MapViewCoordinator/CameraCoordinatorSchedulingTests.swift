@@ -6,7 +6,7 @@ import Testing
 
 @MainActor
 struct CameraCoordinatorSchedulingTests {
-    let runner = MockCameraUpdateRunning(policy: .relaxedVoid)
+    let runner = MockCameraUpdateGating(policy: .relaxedVoid)
     let map = MockMLNMapViewRepresentable(policy: .relaxedVoid)
     let coordinator: MapViewCoordinator<MLNMapViewController>
 

@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 extension MapViewCoordinator where T == MLNMapViewController {
     static func arrange(
-        runner: any CameraUpdateRunning,
+        runner: any CameraUpdateGating,
         camera: Binding<MapViewCamera> = .constant(.default())
     ) -> MapViewCoordinator<MLNMapViewController> {
         MapViewCoordinator(

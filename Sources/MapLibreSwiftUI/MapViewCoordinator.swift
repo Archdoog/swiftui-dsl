@@ -39,7 +39,7 @@ MLNMapViewDelegate {
     private var snapshotCamera: MapViewCamera?
     private var snapshotStyleSource: MapStyleSource?
 
-    private let cameraUpdates: any CameraUpdateRunning
+    private let cameraUpdates: any CameraUpdateGating
     private var cameraRequestID: UUID?
 
     var onStyleLoaded: ((MLNStyle) -> Void)?
@@ -62,7 +62,7 @@ MLNMapViewDelegate {
         onGesture: @escaping (MLNMapView, UIGestureRecognizer) -> Void,
         onViewProxyChanged: @escaping (MapViewProxy) -> Void,
         proxyUpdateMode: ProxyUpdateMode,
-        cameraUpdates: any CameraUpdateRunning = CameraUpdateRunner()
+        cameraUpdates: any CameraUpdateGating = CameraUpdateGate()
     ) {
         self.cameraUpdates = cameraUpdates
         self.parent = parent

@@ -4,7 +4,7 @@ import Testing
 
 @MainActor
 struct CameraCoordinatorLifetimeTests {
-    let runner = MockCameraUpdateRunning(policy: .relaxedVoid)
+    let runner = MockCameraUpdateGating(policy: .relaxedVoid)
     let map = MockMLNMapViewRepresentable(policy: .relaxedVoid)
 
     @Test("A queued state update finishes the runner after its coordinator is released")
