@@ -71,4 +71,11 @@ struct CenteredCameraApplicationBeforeLayoutTests {
         #expect(pitches == [30, 45])
         verify(map).maximumPitch(newValue: .any).setCalled(2)
     }
+
+    @Test("Before layout, a centered camera does not set zoom independently of its center")
+    func omitZoomSetter() {
+        map.apply(camera: .default(), animated: true)
+
+        verify(map).setZoomLevel(.any, animated: .any).called(0)
+    }
 }

@@ -39,13 +39,7 @@ MLNMapViewDelegate {
     private var snapshotCamera: MapViewCamera?
     private var snapshotStyleSource: MapStyleSource?
 
-    /// An asyncronous task that applies the camera update and awaits the map to reach idle state.
-    var cameraUpdateTask: Task<Void, Never>?
-
-    /// This continuation is closed with the MapView becomes idle at the end of a camera update.
-    /// A canceled camera update (think a gesture midway through another camera update)
-    /// should cancel and reset this.
-    var cameraUpdateContinuation: CheckedContinuation<Void, Never>?
+    private let cameraUpdates: any CameraUpdateGating
 
     var onStyleLoaded: ((MLNStyle) -> Void)?
     var onUserTrackingModeChange: ((MLNUserTrackingMode, Bool) -> Void)?
@@ -66,8 +60,10 @@ MLNMapViewDelegate {
         parent: MapView<T>,
         onGesture: @escaping (MLNMapView, UIGestureRecognizer) -> Void,
         onViewProxyChanged: @escaping (MapViewProxy) -> Void,
-        proxyUpdateMode: ProxyUpdateMode
+        proxyUpdateMode: ProxyUpdateMode,
+        cameraUpdates: any CameraUpdateGating = CameraUpdateGate()
     ) {
+        self.cameraUpdates = cameraUpdates
         self.parent = parent
         self.onGesture = onGesture
         self.onViewProxyChanged = onViewProxyChanged
@@ -235,25 +231,12 @@ MLNMapViewDelegate {
 
         snapshotCamera = camera
 
-        // Cancel any existing camera update completion task.
-        cameraUpdateTask?.cancel()
-
-        cameraUpdateTask = Task { @MainActor in
-            await withCheckedContinuation { continuation in
-                guard !Task.isCancelled else {
-                    continuation.resume()
-                    return
-                }
-
-                // Clean up the continuation if it was already set.
-                cameraUpdateContinuation?.resume()
-                cameraUpdateContinuation = nil
-
-                // Store the continuation to be resumed in mapViewDidBecomeIdle
-                cameraUpdateContinuation = continuation
-
-                mapView.apply(camera: camera, animated: animated)
+        cameraUpdates.run { [weak self, weak cameraUpdates = cameraUpdates] in
+            guard self != nil else {
+                cameraUpdates?.finish()
+                return
             }
+            mapView.apply(camera: camera, animated: animated)
         }
     }
 
@@ -279,50 +262,33 @@ MLNMapViewDelegate {
     ///   - mapView: The MapView that is being manipulated by a gesture.
     ///   - reason: The reason for the camera change.
     @MainActor func applyCameraChangeFromGesture(_ mapView: MLNMapViewRepresentable, reason: CameraChangeReason) {
-        guard cameraUpdateTask == nil else {
-            // Gestures emit many updates, so we only want to launch the first one and rely on idle to close the event.
-            return
-        }
-
-        cameraUpdateTask = Task { @MainActor in
-            await withCheckedContinuation { continuation in
-                guard !Task.isCancelled else {
-                    continuation.resume()
-                    return
-                }
-
-                // Store the continuation to be resumed in mapViewDidBecomeIdle
-                cameraUpdateContinuation = continuation
-
-                let pitchRange: CameraPitchRange = if mapView.minimumPitch == 0 && mapView.maximumPitch > 59.9 {
-                    .free
-                } else if mapView.minimumPitch == mapView.maximumPitch {
-                    .fixed(mapView.minimumPitch)
-                } else {
-                    .freeWithinRange(minimum: mapView.minimumPitch, maximum: mapView.maximumPitch)
-                }
-
-                parent.camera = .center(
-                    mapView.centerCoordinate,
-                    zoom: mapView.zoomLevel,
-                    pitch: mapView.camera.pitch,
-                    pitchRange: pitchRange,
-                    direction: mapView.direction,
-                    reason: reason
-                )
+        guard !cameraUpdates.isRunning else { return }
+        cameraUpdates.run { [weak self, weak cameraUpdates = cameraUpdates] in
+            guard let self else {
+                cameraUpdates?.finish()
+                return
             }
+            let pitchRange: CameraPitchRange = if mapView.minimumPitch == 0 && mapView.maximumPitch > 59.9 {
+                .free
+            } else if mapView.minimumPitch == mapView.maximumPitch {
+                .fixed(mapView.minimumPitch)
+            } else {
+                .freeWithinRange(minimum: mapView.minimumPitch, maximum: mapView.maximumPitch)
+            }
+            parent.camera = .center(
+                mapView.centerCoordinate,
+                zoom: mapView.zoomLevel,
+                pitch: mapView.camera.pitch,
+                pitchRange: pitchRange,
+                direction: mapView.direction,
+                reason: reason
+            )
         }
     }
 
-    /// Cancels the pending camera update and resumes its continuation.
-    ///
-    /// Call this when SwiftUI removes the map view. Until the map becomes idle, the pending task holds
-    /// the map view and the coordinator.
+    /// Cancels the pending camera update.
     @MainActor func cancelCameraUpdate() {
-        cameraUpdateTask?.cancel()
-        cameraUpdateTask = nil
-        cameraUpdateContinuation?.resume()
-        cameraUpdateContinuation = nil
+        cameraUpdates.cancel()
     }
 
     // MARK: - MLNMapViewDelegate
@@ -400,9 +366,11 @@ MLNMapViewDelegate {
 
     @MainActor
     public func mapViewDidBecomeIdle(_ mapView: MLNMapView) {
-        cameraUpdateContinuation?.resume()
-        cameraUpdateContinuation = nil
-        cameraUpdateTask = nil
+        handleMapIdle(mapView)
+    }
+
+    func handleMapIdle(_ mapView: MLNMapViewRepresentable) {
+        cameraUpdates.finish()
 
         let viewProxy = MapViewProxy(
             mapView: mapView,

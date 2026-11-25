@@ -56,4 +56,19 @@ struct ShowcaseCameraApplicationTests {
 
         verify(map).direction(newValue: .value(0)).setCalled(1)
     }
+
+    @Test("A showcase fits its shape without setting visible coordinate bounds")
+    func omitVisibleBounds() {
+        map.apply(camera: .showcase(shapeCollection: shape), animated: false)
+
+        verify(map).setVisibleCoordinateBounds(.any, edgePadding: .any, animated: .any, completionHandler: .any)
+            .called(0)
+    }
+
+    @Test("A showcase applies its fitted camera without animation when animation is disabled")
+    func applyWithoutAnimation() {
+        map.apply(camera: .showcase(shapeCollection: shape), animated: false)
+
+        verify(map).setCamera(.value(fittedCamera), animated: .value(false)).called(1)
+    }
 }
